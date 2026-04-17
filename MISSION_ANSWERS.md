@@ -24,14 +24,26 @@
 ## Part 2: Docker
 
 ### Exercise 2.1: Dockerfile questions
-1. Base image: [Your answer]
+1. Base image: 
+Base image được sử dụng là python:3.11.
+Đây là một bản phân phối đầy đủ (full distribution) dựa trên Debian, cung cấp môi trường thực thi Python phiên bản 3.11 cùng các công cụ xây dựng cần thiết.
+
 2. Working directory: [Your answer]
-...
+Thư mục làm việc trong container được xác định là /app.
+Mọi tác vụ sao chép dữ liệu (COPY) và thực thi câu lệnh (RUN, CMD) đều được thực hiện cục bộ tại đường dẫn tuyệt đối này bên trong file system của container.
+
+3. Tại sao COPY requirements.txt trước?
+Việc tách biệt và thực thi COPY requirements.txt trước khi sao chép mã nguồn nhằm tối ưu hóa Docker Layer Caching:
+- Tính ổn định của Dependencies: Các thư viện phụ thuộc thường ít thay đổi hơn so với logic mã nguồn.
+- Hiệu quả xây dựng (Build Efficiency): Bằng cách cài đặt dependencies trước, Docker sẽ lưu trữ lớp (layer) này vào bộ nhớ đệm. Trong các lần build tiếp theo, nếu tệp requirements.txt không có thay đổi, hệ thống sẽ bỏ qua bước pip install (vốn tốn nhiều thời gian và băng thông), chỉ thực hiện cập nhật các lớp chứa mã nguồn phía sau.
+
+4. CMD vs ENTRYPOINT khác nhau thế nào?
+CMD và ENTRYPOINT đều chỉ định lệnh khởi chạy container nhưng khác nhau về khả năng ghi đè. ENTRYPOINT thiết lập lệnh cố định, biến container thành một tệp thực thi mà các tham số truyền thêm sẽ được nối tiếp vào sau. Trong khi đó, CMD chỉ cung cấp giá trị mặc định, cho phép người dùng ghi đè hoàn toàn lệnh khởi động khi thực hiện docker run. Trong Dockerfile này, CMD được ưu tiên để linh hoạt chuyển đổi giữa việc chạy ứng dụng hoặc truy cập terminal khi cần debug.
 
 ### Exercise 2.3: Image size comparison
-- Develop: [X] MB
-- Production: [Y] MB
-- Difference: [Z]%
+- Develop: [1.66] GB
+- Production: [236.44] MB
+- Difference: [$86.09]%
 
 ## Part 3: Cloud Deployment
 
