@@ -64,10 +64,9 @@ Việc giảm dung lượng từ 1.66 GB xuống dưới 500 MB đạt được 
 * **Trích xuất Artifacts:** Kỹ thuật Multi-stage cho phép chỉ giữ lại kết quả cuối cùng của quá trình cài đặt (các tệp .pyc, binary), loại bỏ hoàn toàn các tệp tin tạm, mã nguồn thư viện chưa biên dịch và cache phát sinh trong quá trình build.
 
 ## Part 3: Cloud Deployment
-
 ### Exercise 3.1: Railway deployment
-- URL: https://your-app.railway.app
-- Screenshot: [Link to screenshot in repo]
+- URL: https://day12-2a202600088-khuonghailam-production.up.railway.app
+- Screenshot: /deploy_success.png
 
 ## Part 4: API Security
 
