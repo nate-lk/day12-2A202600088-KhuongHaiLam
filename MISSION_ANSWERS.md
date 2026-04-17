@@ -69,12 +69,94 @@ Việc giảm dung lượng từ 1.66 GB xuống dưới 500 MB đạt được 
 - Screenshot: /deploy_success.png
 
 ## Part 4: API Security
+### 1. Vị trí kiểm tra API Key
+API key được kiểm tra thông qua hàm phụ thuộc (dependency) **`verify_api_key`**. 
+* **Cơ chế:** Hàm này được tiêm (inject) vào endpoint `@app.post("/ask")` bằng câu lệnh `_key: str = Depends(verify_api_key)`. 
+* **Logic:** Hệ thống lấy giá trị từ header `X-API-Key` và so sánh trực tiếp với biến `API_KEY` được tải từ môi trường.
 
+### 2. Phản hồi khi sai hoặc thiếu Key
+Dựa trên logic trong hàm `verify_api_key`, có hai trường hợp lỗi xảy ra:
+* **Thiếu Key (Missing Key):** Nếu header `X-API-Key` không tồn tại, hệ thống trả về lỗi **HTTP 401 Unauthorized** kèm thông báo yêu cầu cung cấp key.
+* **Sai Key (Invalid Key):** Nếu giá trị cung cấp không khớp với biến `API_KEY` của hệ thống, hệ thống trả về lỗi **HTTP 403 Forbidden** kèm thông báo `"Invalid API key."`.
+
+### 3. Phương thức thay đổi (Rotate) Key
+Vì API key được cấu hình thông qua biến môi trường (`os.getenv`), việc thay đổi key được thực hiện như sau:
+* **Thao tác:** Cập nhật giá trị của biến môi trường **`AGENT_API_KEY`** trong cấu hình của hệ thống lưu trữ (ví dụ: mục Variables trên Railway, environment trong Docker, hoặc lệnh export trên terminal).
+* **Thực thi:** Sau khi thay đổi biến môi trường, cần khởi động lại (restart) hoặc triển khai lại (redeploy) dịch vụ để ứng dụng nhận giá trị key mới từ hệ thống.
 ### Exercise 4.1-4.3: Test results
-[Paste your test outputs]
+#### 4.1
+Không có key:
+```
+{
+    "detail": "Missing API key. Include header: X-API-Key: <your-key>"
+}
+```
+
+Có key:
+{
+    "question": "Hello",
+    "answer": "Đây là câu trả lời từ AI agent (mock). Trong production, đây sẽ là response từ OpenAI/Anthropic."
+}
+
+#### 4.2.
+Token = 
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdHVkZW50Iiwicm9sZSI6InVzZXIiLCJpYXQiOjE3NzY0MTc0ODQsImV4cCI6MTc3NjQyMTA4NH0.NEHKUT4FC-dX96BveVpQYbeWQG8M0uO3v8982RUn2KA
+
+Sử dụng Token trong Header Bearer
+
+Hỏi:
+
+```
+{
+    "question":"what is docker"
+}
+```
+Trả lời
+```
+{
+    "question": "what is docker",
+    "answer": "Container là cách đóng gói app để chạy ở mọi nơi. Build once, run anywhere!",
+    "usage": {
+        "requests_remaining": 7,
+        "budget_remaining_usd": 5.9e-05
+    }
+}
+```
+
+Nếu không có token:
+```
+{
+    "detail": "Authentication required. Include: Authorization: Bearer <token>"
+}
+```
+#### 4.3.
+Response khi hit limit:
+```
+Invoke-RestMethod : \{"detail":\{"error":"Rate limit
+exceeded","limit":10,"window_seconds":60,"retry_after_seconds":59\}\}
+At line:9 char:5
++     Invoke-RestMethod -Uri "http://127.0.0.1:8000/ask" -Method Post - ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (System.Net.HttpWebRequest:HttpWebRequest) [
+   Invoke-RestMethod], WebException
+    + FullyQualifiedErrorId : WebCmdletWebResponseException,Microsoft.PowerShell.Commands.In
+   vokeRestMethodCommand
+Invoke-RestMethod : \{"detail":\{"error":"Rate limit
+exceeded","limit":10,"window_seconds":60,"retry_after_seconds":59\}\}
+```
+Dừng cho phép truy cập sau 10 lần
 
 ### Exercise 4.4: Cost guard implementation
-[Explain your approach]
+Cơ chế Cost Guard bảo vệ ngân sách LLM thông qua 3 lớp xử lý chính:
+
+1. **Tính toán chi phí thực tế:** Sử dụng đơn giá cho 1000 tokens (GPT-4o-mini reference: Input $0.00015, Output $0.0006) để quy đổi lưu lượng sử dụng thành tiền (USD).
+2. **Kiểm tra đa tầng (Multi-level Check):**
+   - **Global Limit:** Nếu tổng chi phí toàn hệ thống vượt quá $10/ngày, server trả về lỗi 503 (Service Unavailable).
+   - **User Limit:** Nếu một người dùng vượt quá $1/ngày, server trả về lỗi 402 (Payment Required) kèm thông tin chi tiết về ngân sách đã dùng.
+3. **Quy trình xử lý Request:**
+   - **Trước khi gọi LLM:** Chạy `check_budget` để đảm bảo còn ngân sách. Nếu đạt 80% hạn mức (warning threshold), hệ thống sẽ ghi log Warning để cảnh báo quản trị viên.
+   - **Sau khi gọi LLM:** Chạy `record_usage` để cập nhật số lượng token thực tế đã tiêu thụ vào hồ sơ của người dùng và cộng dồn vào tổng chi phí toàn hệ thống.
+
 
 ## Part 5: Scaling & Reliability
 
