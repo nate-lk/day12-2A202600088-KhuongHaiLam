@@ -181,3 +181,5 @@ Cơ chế đảm bảo khả năng mở rộng và độ tin cậy của Agent:
 
 5. **Kiểm thử Stateless (5.5):**
    - Chạy `test_stateless.py` chứng minh các requests trong cùng một session được xử lý bởi các `instance_id` khác nhau (served_by) nhưng vẫn duy trì được lịch sử hội thoại nhất quán nhờ Redis backend.
+
+# Part 6: Complete Lab
