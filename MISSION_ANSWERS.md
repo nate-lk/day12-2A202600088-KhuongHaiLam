@@ -45,6 +45,24 @@ CMD và ENTRYPOINT đều chỉ định lệnh khởi chạy container nhưng kh
 - Production: [236.44] MB
 - Difference: [$86.09]%
 
+### 1. Vai trò của Stage 1 (Builder)
+Stage 1 đóng vai trò là môi trường chuẩn bị và xây dựng các thành phần phụ thuộc (dependencies) cho ứng dụng:
+* **Cài đặt công cụ biên dịch:** Sử dụng các gói như `gcc` và `libpq-dev` để biên dịch các thư viện Python đặc thù từ mã nguồn.
+* **Xây dựng Artifacts:** Thực hiện cài đặt các thư viện vào thư mục bộ nhớ đệm cục bộ (`/root/.local`) để sẵn sàng chuyển sang giai đoạn tiếp theo.
+* **Phạm vi:** Giai đoạn này chỉ tồn tại trong quá trình xây dựng image; toàn bộ các công cụ biên dịch nặng nề sẽ không xuất hiện trong sản phẩm cuối cùng.
+
+### 2. Vai trò của Stage 2 (Runtime)
+Stage 2 tạo ra môi trường thực thi chính thức cho ứng dụng:
+* **Tối ưu hóa môi trường:** Khởi tạo từ bản `slim` (rút gọn) để loại bỏ các tệp tin hệ thống không cần thiết cho việc vận hành Python.
+* **Kế thừa chọn lọc:** Chỉ sao chép các thư viện đã được biên dịch hoàn tất từ Stage 1 (`COPY --from=builder`) và mã nguồn ứng dụng.
+* **Thiết lập vận hành:** Cấu hình bảo mật với người dùng không có quyền root (`appuser`), thiết lập biến môi trường và cơ chế kiểm tra sức khỏe hệ thống (`HEALTHCHECK`).
+
+### 3. Nguyên nhân kích thước image nhỏ hơn
+Việc giảm dung lượng từ 1.66 GB xuống dưới 500 MB đạt được thông qua các cơ chế sau:
+* **Sử dụng Slim Base Image:** Thay thế bản phân phối Python đầy đủ bằng bản `slim`, vốn đã loại bỏ các bộ công cụ phát triển và tài liệu hướng dẫn của hệ điều hành.
+* **Loại bỏ Build Tools:** Các công cụ chiếm dung lượng lớn như `gcc` và các thư viện liên kết chỉ nằm lại ở Stage 1. Image Runtime cuối cùng hoàn toàn sạch bóng các công cụ này.
+* **Trích xuất Artifacts:** Kỹ thuật Multi-stage cho phép chỉ giữ lại kết quả cuối cùng của quá trình cài đặt (các tệp .pyc, binary), loại bỏ hoàn toàn các tệp tin tạm, mã nguồn thư viện chưa biên dịch và cache phát sinh trong quá trình build.
+
 ## Part 3: Cloud Deployment
 
 ### Exercise 3.1: Railway deployment
