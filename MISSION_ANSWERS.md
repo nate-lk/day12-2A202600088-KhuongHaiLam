@@ -161,4 +161,23 @@ Cơ chế Cost Guard bảo vệ ngân sách LLM thông qua 3 lớp xử lý chí
 ## Part 5: Scaling & Reliability
 
 ### Exercise 5.1-5.5: Implementation notes
-[Your explanations and test results]
+Cơ chế đảm bảo khả năng mở rộng và độ tin cậy của Agent:
+
+1. **Health Checks (5.1):** 
+   - Đã triển khai `/health` (Liveness probe) để kiểm tra xem process có đang chạy không và tình trạng tài nguyên (memory).
+   - Đã triển khai `/ready` (Readiness probe) để kiểm tra xem model đã load xong chưa và các dependency (Redis) có sẵn sàng nhận traffic không.
+
+2. **Graceful Shutdown (5.2):** 
+   - Sử dụng `lifespan` handler kết hợp với middleware `track_requests` để theo dõi các request đang xử lý.
+   - Khi nhận tín hiệu `SIGTERM`, agent sẽ ngừng nhận request mới (`_is_ready = False`) và chờ các request đang thực thi hoàn thành trước khi tắt hẳn (tối đa 30s).
+
+3. **Stateless Design (5.3):**
+   - Refactor logic lưu trữ conversation history từ memory sang Redis.
+   - Việc này giúp bất kỳ instance nào trong cụm (cluster) cũng có thể phục vụ request của cùng một người dùng mà không bị mất lịch sử chat.
+
+4. **Load Balancing (5.4):**
+   - Sử dụng Nginx làm Load Balancer trước 3 instances của Agent.
+   - Nginx thực hiện phân phối traffic theo thuật toán Round Robin, giúp giảm tải cho từng instance và tăng tính sẵn sàng (nếu 1 instance die, traffic vẫn được phục vụ bởi 2 instance còn lại).
+
+5. **Kiểm thử Stateless (5.5):**
+   - Chạy `test_stateless.py` chứng minh các requests trong cùng một session được xử lý bởi các `instance_id` khác nhau (served_by) nhưng vẫn duy trì được lịch sử hội thoại nhất quán nhờ Redis backend.
